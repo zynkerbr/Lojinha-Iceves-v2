@@ -15,6 +15,7 @@ import {
   SystemSettings,
   MonthlyClosingPreview 
 } from '../types/index.ts';
+import { generateBacenPixPayload } from '../utils/pix.ts';
 import { 
   initialUsers, 
   initialGuardians, 
@@ -682,13 +683,14 @@ class DatabaseService {
       const grossTotal = Math.round((tuitionAmount + consumptionTotal) * 100) / 100;
       const invoiceId = `FAT-${period.replace('-', '')}-${student.registrationNumber.replace('-', '')}`;
 
-      // Montar código Pix Copia e Cola formatado
-      const pixKey = this.data.settings.pixKey;
-      const pixName = this.data.settings.pixReceiverName.toUpperCase().slice(0, 25);
-      const pixCity = this.data.settings.pixCity.toUpperCase().slice(0, 15);
-      const pixAmountStr = grossTotal.toFixed(2);
-      
-      const pixCode = `00020126580014br.gov.bcb.pix01${String(pixKey.length).padStart(2, '0')}${pixKey}520400005303986540${String(pixAmountStr.length).padStart(2, '0')}${pixAmountStr}5802BR59${String(pixName.length).padStart(2, '0')}${pixName}60${String(pixCity.length).padStart(2, '0')}${pixCity}62070503***6304${Math.floor(1000 + Math.random() * 9000).toString(16).toUpperCase()}`;
+      // Montar código Pix Copia e Cola no padrão oficial Bacen EMV
+      const pixCode = generateBacenPixPayload({
+        pixKey: this.data.settings.pixKey,
+        receiverName: this.data.settings.pixReceiverName,
+        city: this.data.settings.pixCity,
+        amount: grossTotal,
+        txId: invoiceId
+      });
 
       const invoice: Invoice = {
         id: invoiceId,

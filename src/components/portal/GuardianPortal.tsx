@@ -15,9 +15,11 @@ import {
   Eye
 } from 'lucide-react';
 import { Guardian, Student, Invoice, Sale, PixPayment } from '../../types';
-import { formatCurrency, formatDate, formatDateTime, formatPeriod, generatePixQrSvg } from '../../utils/formatters';
+import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { MercadoPagoCheckoutModal } from '../payment/MercadoPagoCheckoutModal';
+import { QrCodeDisplay } from '../common/QrCodeDisplay';
 
 interface GuardianPortalProps {
   guardian: Guardian;
@@ -63,6 +65,7 @@ export function GuardianPortal({
   const [pixSuccess, setPixSuccess] = useState(false);
   const [pixError, setPixError] = useState<string | null>(null);
   const [copiedPixId, setCopiedPixId] = useState<string | null>(null);
+  const [mpCheckoutInvoice, setMpCheckoutInvoice] = useState<Invoice | null>(null);
 
   // Stripe Checkout Modal state
   const [stripeModalInvoice, setStripeModalInvoice] = useState<Invoice | null>(null);
@@ -315,27 +318,27 @@ export function GuardianPortal({
                               <CreditCard className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="font-semibold text-white text-xs">Pagar com Cartão via Stripe (Test Mode)</p>
-                              <p className="text-[11px] text-zinc-400">Chave configurada: <code className="font-mono text-indigo-300">pk_test_...</code></p>
+                              <p className="font-semibold text-white text-xs">Pagar com Mercado Pago (Checkout Transparente)</p>
+                              <p className="text-[11px] text-zinc-400">Pix Instantâneo (QR Code Dinâmico) ou Cartão de Crédito</p>
                             </div>
                           </div>
 
                           <button
                             type="button"
-                            onClick={() => handleStartStripe(invoice)}
-                            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-lg flex items-center gap-2 shrink-0 cursor-pointer"
+                            onClick={() => setMpCheckoutInvoice(invoice)}
+                            className="px-5 py-2.5 bg-[#009EE3] hover:bg-[#008CC9] text-white rounded-xl text-xs font-bold transition shadow-lg flex items-center gap-2 shrink-0 cursor-pointer"
                           >
                             <CreditCard className="w-4 h-4" />
-                            Pagar com Stripe (R$ {invoice.remainingBalance.toFixed(2)})
+                            Pagar com Mercado Pago (R$ {invoice.remainingBalance.toFixed(2)})
                           </button>
                         </div>
 
                         {/* Pix Payment box */}
                         <div className="p-4 bg-[#1E1E1E] rounded-xl border border-[#282828] flex flex-col sm:flex-row items-center gap-4">
-                          <img 
-                            src={generatePixQrSvg(invoice.pixQrCodePayload)} 
-                            alt="Pix QR Code" 
-                            className="w-24 h-24 bg-white p-1.5 rounded-xl border border-white/20 shadow-md shrink-0"
+                          <QrCodeDisplay 
+                            value={invoice.pixQrCodePayload} 
+                            size={96} 
+                            className="shrink-0"
                           />
                           <div className="flex-1 space-y-2 w-full text-xs">
                             <p className="font-semibold text-[#F5F5F5]">
@@ -504,6 +507,20 @@ export function GuardianPortal({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Mercado Pago Checkout Transparente Modal */}
+      {mpCheckoutInvoice && (
+        <MercadoPagoCheckoutModal
+          invoice={mpCheckoutInvoice}
+          payerName={guardian.name}
+          payerEmail={guardian.email}
+          payerCpf={guardian.cpf}
+          onClose={() => setMpCheckoutInvoice(null)}
+          onPaymentSuccess={() => {
+            window.location.reload();
+          }}
+        />
       )}
 
       {/* Invoice Details Modal */}

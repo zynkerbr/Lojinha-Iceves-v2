@@ -17,9 +17,10 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Invoice, MonthlyClosingPreview, InvoiceStatus, Student } from '../../types';
-import { formatCurrency, formatDate, formatDateTime, formatPeriod, generatePixQrSvg } from '../../utils/formatters';
+import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { QrCodeDisplay } from '../common/QrCodeDisplay';
 
 interface InvoicesAndClosingProps {
   invoices: Invoice[];
@@ -602,10 +603,11 @@ export function InvoicesAndClosing({
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <img 
-                    src={generatePixQrSvg(selectedInvoice.pixQrCodePayload)} 
-                    alt="Pix QR Code" 
-                    className="w-24 h-24 bg-white p-1 rounded-xl border border-[#333333] shadow-xs"
+                  <QrCodeDisplay 
+                    value={selectedInvoice.pixCopyPasteCode || selectedInvoice.pixQrCodePayload} 
+                    size={96} 
+                    className="shrink-0"
+                    alt={`QR Code Pix Fatura ${selectedInvoice.id}`}
                   />
                   <div className="flex-1 space-y-1.5 w-full">
                     <label className="block text-[11px] font-bold text-[#A1A1AA]">

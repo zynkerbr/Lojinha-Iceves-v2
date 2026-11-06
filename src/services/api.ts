@@ -221,5 +221,89 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(params)
     });
+  },
+
+  // Mercado Pago Checkout Transparente & Webhook
+  async getMercadoPagoStatus() {
+    return request<{
+      configured: boolean;
+      isProduction: boolean;
+      publicKeyAvailable: boolean;
+      webhookUrl: string;
+      maskedToken?: string;
+    }>('/api/mercadopago/status');
+  },
+
+  async createMercadoPagoPix(params: {
+    invoiceId: string;
+    amount: number;
+    payerEmail?: string;
+    payerName?: string;
+    payerCpf?: string;
+    description?: string;
+  }) {
+    return request<{
+      success: boolean;
+      isLive: boolean;
+      mockNotice?: string;
+      isCollectorKeyMissing?: boolean;
+      collectorNotice?: string;
+      collectorHelp?: string;
+      paymentId: string;
+      status: string;
+      statusDetail: string;
+      qrCode?: string;
+      qrCodeBase64?: string | null;
+      ticketUrl?: string;
+      invoiceId: string;
+      amount: number;
+      expirationDate?: string;
+    }>('/api/mercadopago/create-pix', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    });
+  },
+
+  async createMercadoPagoCardPayment(params: {
+    invoiceId: string;
+    amount: number;
+    token?: string;
+    installments: number;
+    paymentMethodId: string;
+    payerEmail?: string;
+    payerCpf?: string;
+    cardHolderName?: string;
+    description?: string;
+  }) {
+    return request<{
+      success: boolean;
+      isLive: boolean;
+      mockNotice?: string;
+      paymentId: string;
+      status: string;
+      statusDetail: string;
+      paymentMethodId: string;
+      invoiceId: string;
+      amount: number;
+    }>('/api/mercadopago/create-card', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    });
+  },
+
+  async checkMercadoPagoPayment(paymentId: string) {
+    return request<any>(`/api/mercadopago/check-payment/${paymentId}`);
+  },
+
+  // Supabase
+  async getSupabaseStatus() {
+    return request<{
+      configured: boolean;
+      urlProvided: boolean;
+      keyProvided: boolean;
+      maskedUrl?: string;
+      connected?: boolean;
+      error?: string;
+    }>('/api/supabase/status');
   }
 };

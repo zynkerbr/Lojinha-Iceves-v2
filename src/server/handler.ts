@@ -1,5 +1,13 @@
 import { db } from './db.ts';
 import { UserRole } from '../types/index.ts';
+import { checkSupabaseConnection } from './supabase.ts';
+import {
+  getMercadoPagoStatus,
+  createMercadoPagoPixPayment,
+  createMercadoPagoCardPayment,
+  handleMercadoPagoWebhookEvent,
+  fetchMercadoPagoPayment
+} from './mercadopago.ts';
 
 export interface ApiRequest {
   method: string;
@@ -329,6 +337,101 @@ export async function handleApiRoute(req: ApiRequest): Promise<ApiResponse> {
           message: 'Pagamento com cartão via Stripe processado e faturado com sucesso!'
         }
       };
+    }
+
+    // 8.2. Mercado Pago Checkout Transparente & Webhooks
+    if (pathname === '/api/mercadopago/status' && method === 'GET') {
+      const status = getMercadoPagoStatus();
+      return { status: 200, data: status };
+    }
+
+    if (pathname === '/api/mercadopago/create-pix' && method === 'POST') {
+      const { invoiceId, amount, payerEmail, payerName, payerCpf, description } = req.body || {};
+      const invoice = db.getInvoices().find(i => i.id === invoiceId);
+      if (!invoice) {
+        return { status: 404, data: { error: 'Fatura não encontrada.' } };
+      }
+
+      const pixResult = await createMercadoPagoPixPayment({
+        invoiceId,
+        amount: Number(amount) || invoice.remainingBalance,
+        payerEmail: payerEmail || currentUser.name + '@campus.edu.br',
+        payerName: payerName || currentUser.name,
+        payerCpf,
+        description: description || `Pagamento Fatura ${invoice.id}`
+      });
+
+      return { status: 200, data: pixResult };
+    }
+
+    if (pathname === '/api/mercadopago/create-card' && method === 'POST') {
+      const { 
+        invoiceId, 
+        amount, 
+        token, 
+        installments, 
+        paymentMethodId, 
+        payerEmail, 
+        payerCpf, 
+        cardHolderName, 
+        description 
+      } = req.body || {};
+
+      const invoice = db.getInvoices().find(i => i.id === invoiceId);
+      if (!invoice) {
+        return { status: 404, data: { error: 'Fatura não encontrada.' } };
+      }
+
+      const cardResult = await createMercadoPagoCardPayment({
+        invoiceId,
+        amount: Number(amount) || invoice.remainingBalance,
+        token,
+        installments: Number(installments) || 1,
+        paymentMethodId: paymentMethodId || 'visa',
+        payerEmail: payerEmail || currentUser.name + '@campus.edu.br',
+        payerCpf,
+        cardHolderName,
+        description: description || `Pagamento Fatura ${invoice.id}`
+      });
+
+      // If approved immediately
+      if (cardResult.status === 'approved') {
+        const payment = db.submitPixPayment({
+          invoiceId,
+          amount: Number(amount) || invoice.remainingBalance,
+          transactionReference: `MP-${cardResult.paymentId}`,
+          receiptAttachment: `Comprovante_MercadoPago_${cardResult.paymentId}.pdf`,
+          receiptNotes: `Pagamento com Cartão aprovado via Checkout Transparente Mercado Pago (${cardResult.paymentMethodId.toUpperCase()})`,
+          user: currentUser
+        });
+
+        db.reviewPixPayment({
+          paymentId: payment.id,
+          decision: 'APROVADO',
+          reason: 'Aprovação instantânea via Mercado Pago Checkout Transparente',
+          reviewerUser: currentUser
+        });
+      }
+
+      return { status: 200, data: cardResult };
+    }
+
+    if (pathname === '/api/mercadopago/webhook' && (method === 'POST' || method === 'GET')) {
+      const queryParams = Object.fromEntries(url.searchParams.entries());
+      const webhookResult = await handleMercadoPagoWebhookEvent(req.body, queryParams, req.headers);
+      return { status: 200, data: webhookResult };
+    }
+
+    if (pathname.startsWith('/api/mercadopago/check-payment/') && method === 'GET') {
+      const paymentId = pathname.replace('/api/mercadopago/check-payment/', '');
+      const paymentInfo = await fetchMercadoPagoPayment(paymentId);
+      return { status: 200, data: paymentInfo || { status: 'pending' } };
+    }
+
+    // 8.3. Supabase Integration & Status
+    if (pathname === '/api/supabase/status' && method === 'GET') {
+      const status = await checkSupabaseConnection();
+      return { status: 200, data: status };
     }
 
     // 9. WhatsApp Notifications

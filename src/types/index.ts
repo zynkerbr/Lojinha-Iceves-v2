@@ -306,6 +306,9 @@ export interface SystemSettings {
   whatsappAutoEnabled: boolean;
   whatsappProviderName: string;
   whatsappProviderStatus: 'CONNECTED' | 'PAUSED' | 'DISCONNECTED';
+  mercadoPagoActive?: boolean;
+  mercadoPagoMode?: 'PRODUCAO' | 'SANDBOX';
+  supabaseActive?: boolean;
   stripePublishableKey?: string;
   updatedAt: string;
   updatedByUserName: string;
